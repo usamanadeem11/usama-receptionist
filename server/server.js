@@ -40,11 +40,13 @@ app.get('/webhook', (req, res) => {
 // 2. Incoming WhatsApp messages
 app.post('/webhook', async (req, res) => {
   res.sendStatus(200); // ack fast; process async
+  console.log('webhook POST received');
   try {
     const msg = req.body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!msg || msg.type !== 'text') return;
+    if (!msg || msg.type !== 'text') { console.log('webhook: no text message in payload'); return; }
     const from = msg.from;
     const text = msg.text.body.trim();
+    console.log('incoming message from', from, ':', text.slice(0, 100));
     if (!text) return;
 
     const history = sessions.get(from) || [];
@@ -54,6 +56,7 @@ app.post('/webhook', async (req, res) => {
     sessions.set(from, history.slice(-MAX_HISTORY));
 
     await sendWhatsApp(from, reply);
+    console.log('reply sent to', from);
   } catch (e) { console.error('webhook error:', e.message); }
 });
 
