@@ -92,5 +92,5 @@ async function sendWhatsApp(to, text) {
   if (!r.ok) console.error('whatsapp send error:', (await r.text()).slice(0, 300));
 }
 
-app.get('/', (_req, res) => res.send('Usama Studio receptionist is running.'));
+app.get('/', (_req, res) => res.send('Usama Studio receptionist is running. v2-logging'));
 app.listen(PORT, () => console.log(`Receptionist listening on :${PORT}`));
