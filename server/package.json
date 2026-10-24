@@ -1,0 +1,1 @@
+{"dependencies":{"express":"^4.19.2"},"description":"WhatsApp AI receptionist for Usama Studio — 0-cost stack (Meta Cloud API + Gemini free tier)","engines":{"node":">=18"},"main":"server.js","name":"usama-studio-receptionist","scripts":{"start":"node server.js"},"version":"1.0.0"}
