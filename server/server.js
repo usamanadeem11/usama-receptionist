@@ -55,8 +55,8 @@ app.post('/webhook', async (req, res) => {
     history.push({ role: 'model', text: reply });
     sessions.set(from, history.slice(-MAX_HISTORY));
 
-    await sendWhatsApp(from, reply);
-    console.log('reply sent to', from);
+    const sent = await sendWhatsApp(from, reply);
+    console.log(sent ? 'reply sent to' : 'reply FAILED to', from);
   } catch (e) { console.error('webhook error:', e.message); }
 });
 
@@ -65,22 +65,30 @@ async function askGemini(history) {
     role: h.role === 'user' ? 'user' : 'model',
     parts: [{ text: h.text }],
   }));
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n\nREFERENCE KNOWLEDGE:\n' + KNOWLEDGE }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
-      }),
-    }
-  );
-  const data = await r.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) { console.error('gemini error:', JSON.stringify(data).slice(0, 300)); return "Sorry, I had a hiccup — please try again in a moment."; }
-  return text.trim();
+  // Model fallback chain: Google retires models (gemini-2.0-flash went 404),
+  // so try current models in order until one answers.
+  const models = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
+  for (const model of models) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n\nREFERENCE KNOWLEDGE:\n' + KNOWLEDGE }] },
+            contents,
+            generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
+          }),
+        }
+      );
+      const data = await r.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text.trim();
+      console.error('gemini error (' + model + '):', JSON.stringify(data).slice(0, 300));
+    } catch (e) { console.error('gemini fetch error (' + model + '):', e.message); }
+  }
+  return "Sorry, I had a hiccup — please try again in a moment.";
 }
 
 async function sendWhatsApp(to, text) {
@@ -90,6 +98,7 @@ async function sendWhatsApp(to, text) {
     body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body: text.slice(0, 4000) } }),
   });
   if (!r.ok) console.error('whatsapp send error:', (await r.text()).slice(0, 300));
+  return r.ok;
 }
 
 app.get('/', (_req, res) => res.send('Usama Studio receptionist is running. v2-logging'));
