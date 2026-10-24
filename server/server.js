@@ -78,7 +78,7 @@ async function askGemini(history) {
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: SYSTEM_PROMPT + '\n\nREFERENCE KNOWLEDGE:\n' + KNOWLEDGE }] },
             contents,
-            generationConfig: { temperature: 0.4, maxOutputTokens: 300 },
+            generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
           }),
         }
       );
